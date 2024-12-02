@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recipe Health Prediction</title>
+    <style>
+        body {
+          font-family: Arial, sans-serif;
+          margin: 20px;
+          background-color: #f9f9f9;
+        }
+        h1 {
+          text-align: center;
+        }
+        .cards-container {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 20px;
+        }
+        .card {
+          background: white;
+          padding: 15px;
+          width: 200px;
+          border-radius: 10px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          text-align: center;
+        }
+        .card img {
+          max-width: 100%;
+          height: 150px;
+          object-fit: cover;
+          border-radius: 10px;
+          margin-bottom: 10px;
+        }
+        .card h3 {
+          font-size: 18px;
+          margin-bottom: 10px;
+        }
+        .card button {
+          background: #007bff;
+          color: white;
+          padding: 10px;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+        }
+        .card button:hover {
+          background: #0056b3;
+        }
+      </style>
+</head>
+<body>
+
+    <h1>Select a Recipe</h1>
+    <div class="cards-container">
+      {% for recipe in recipes %}
+      <div class="card">
+        <img src="{{ recipe.ImageURL }}" alt="{{ recipe.Name }}">
+        <h3>{{ recipe.Name }}</h3>
+        <p>Calories: {{ recipe.Calories }}</p>
+        <form action="{{ url_for('recommend', recipe_id=recipe.RecipeId) }}">
+          <button type="submit">Select</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+
+
+    <hr>
+    <h1>Recipe Health Prediction</h1>
+    
+    <!-- Form for entering ingredients -->
+    <form action="/predict" method="post">
+        <label for="ingredients">Enter Ingredients:</label><br>
+        <textarea id="ingredients" name="ingredients" rows="4" cols="50" required></textarea><br><br>
+        <button type="submit">Predict</button>
+    </form>
+    
+    <!-- Display prediction text if available -->
+    {% if prediction_text %}
+        <h2>{{ prediction_text }}</h2>
+    {% endif %}
+
+    <!-- Recipe details if available -->
+    {% if recipe_details %}
+        <h3>Example Recipe with Your Ingredients:</h3>
+        <ul>
+            <li><strong>Name:</strong> {{ recipe_details['Name'] }}</li>
+            <li><strong>Cook Time:</strong> {{ recipe_details['CookTime'] }}</li>
+            
+            <!-- Display image only if the image URL is available -->
+            <li><strong>Images:</strong> <img src="{{ recipe_details['Images'] }}" alt="Recipe Image" style="max-width:200px;"></li>
+            <li><strong>Category:</strong> {{ recipe_details['RecipeCategory'] }}</li>
+            <li><strong>Ingredients:</strong> {{ recipe_details['RecipeIngredientParts'] }}</li>
+            <li><strong>Quantities:</strong> {{ recipe_details['RecipeIngredientQuantities'] }}</li>
+            <li><strong>Ratings:</strong> {{ recipe_details['AggregatedRating'] }}</li>
+            <li><strong>Servings:</strong> {{ recipe_details['RecipeServings'] }}</li>
+            <li><strong>Instructions:</strong> {{ recipe_details['RecipeInstructions'] }}</li>
+        </ul>
+        
+        <!-- Button to request another recipe -->
+        <form action="/next_recipe" method="post">
+            <button type="submit">Other Recipe</button>
+        </form>
+
+        <!-- Button to toggle the visibility of extended details -->
+        <br><br><br>
+        <button id="more-details-button" onclick="toggleDetails()">More Details</button>
+
+        <!-- Section with extended details, initially hidden -->
+        <div id="extended-details" style="display: none;">
+            {% if extended_details %}
+                <h3>Nutritional Details (Per Serving):</h3>
+                <ul>
+                    <li><strong>Calories:</strong> {{ extended_details['Calories'] }}</li>
+                    <li><strong>Fat:</strong> {{ extended_details['FatContent'] }}</li>
+                    <li><strong>Saturated Fat:</strong> {{ extended_details['SaturatedFatContent'] }}</li>
+                    <li><strong>Cholesterol:</strong> {{ extended_details['CholesterolContent'] }}</li>
+                    <li><strong>Sodium:</strong> {{ extended_details['SodiumContent'] }}</li>
+                    <li><strong>Carbohydrates:</strong> {{ extended_details['CarbohydrateContent'] }}</li>
+                    <li><strong>Fiber:</strong> {{ extended_details['FiberContent'] }}</li>
+                    <li><strong>Sugar:</strong> {{ extended_details['SugarContent'] }}</li>
+                    <li><strong>Protein:</strong> {{ extended_details['ProteinContent'] }}</li>
+                </ul>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <!-- JavaScript to toggle the extended details visibility -->
+    <script>
+        function toggleDetails() {
+            const detailsSection = document.getElementById('extended-details');
+            const button = document.getElementById('more-details-button');
+            
+            // Toggle the visibility of the extended details
+            if (detailsSection.style.display === 'none') {
+                detailsSection.style.display = 'block';
+                button.textContent = 'Hide Details'; // Change button text to 'Hide'
+            } else {
+                detailsSection.style.display = 'none';
+                button.textContent = 'More Details'; // Change button text back to 'More Details'
+            }
+        }
+    </script>
+</body>
+</html>

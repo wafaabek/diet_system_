@@ -1,0 +1,6 @@
+Flask
+joblib
+pandas
+scikit-learn
+
+//pip install -r requirements.txt

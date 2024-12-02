@@ -33,9 +33,9 @@ scaler = StandardScaler()
 scaled_features = scaler.fit_transform(data[nutritional_features])
 
 def fetch_image(recipe_name , ingredients):
-    url = "https://www.googleapis.com/customsearch/v1"
-    API_KEY = "AIzaSyCcPP5R23o7DdTVxCdLvBIwXKqm_ullXG4"
-    SEARCH_ENGINE_ID = "b604b290643ae4f55"
+    url = "Your-URL"
+    API_KEY = "YOUR-API-KEY"
+    SEARCH_ENGINE_ID = "ID-SEARCH-ENGINE"
 
     search_query = f"{recipe_name} {ingredients}"
 

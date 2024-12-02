@@ -1,0 +1,80 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f9f9f9;
+  }
+  h1, h2 {
+    text-align: center;
+    color: #333;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  .recipe {
+    display: inline-block;
+    width: 60%;
+    margin: 10px 1%;
+    flex-direction: column;
+    padding: 20px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    transition: box-shadow 0.3s ease;
+    margin-left: 17%;
+  }
+  .recipe:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  }
+  .recipe h3 {
+    font-size: 22px;
+    color: #007bff;
+    margin-bottom: 10px;
+  }
+  .recipe p {
+    font-size: 16px;
+    margin: 8px 0;
+    color: #555;
+  }
+  .recipe img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-bottom: 15px;
+  }
+  .recipe ul {
+    padding-left: 20px;
+    list-style-type: square;
+    text-align: left;
+    margin-bottom: 15px;
+  }
+  .recipe ul li {
+    margin-bottom: 5px;
+  }
+  .back-btn {
+    display: inline-block;
+    margin: 20px auto;
+    padding: 12px 25px;
+    background: #007bff;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 5px;
+    font-size: 16px;
+    width: auto;
+    transition: background 0.3s ease;
+  }
+  .back-btn:hover {
+    background: #0056b3;
+  }
+  @media (max-width: 768px) {
+    .recipe {
+      width: 100%;
+      margin: 10px 0;
+    }
+  }

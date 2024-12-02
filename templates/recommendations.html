@@ -4,61 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Recommendations</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background-color: #f9f9f9;
-    }
-    h1, h2 {
-      text-align: center;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    .recipe img {
-      max-width: 100%;
-      height: 150px;
-      object-fit: cover;
-      border-radius: 10px;
-      margin-bottom: 10px;
-    }
-    .recipe {
-      margin-bottom: 20px;
-    }
-    .recipe h3 {
-      font-size: 20px;
-      margin-bottom: 5px;
-    }
-    .recipe p {
-      margin: 5px 0;
-    }
-    .back-btn {
-      display: block;
-      margin: 20px auto;
-      padding: 10px 20px;
-      background: #007bff;
-      color: white;
-      text-align: center;
-      text-decoration: none;
-      border-radius: 5px;
-      width: 150px;
-    }
-    .back-btn:hover {
-      background: #0056b3;
-    }
-  </style>
+  <link rel="stylesheet" href="/static/recommendation.css" type="text/css">
 </head>
 <body>
   <h1>Similar Recipes</h1>
   <div class="container">
     <div class="recipe">
-      <img src="{{ selected_recipe.ImageURL }}" alt="{{ selected_recipe.Name }}">
       <h3>Selected Recipe: {{ selected_recipe.Name }}</h3>
       <p><strong>Calories:</strong> {{ selected_recipe.Calories }}</p>
       <p><strong>Protein:</strong> {{ selected_recipe.ProteinContent }}</p>
@@ -66,28 +17,36 @@
       <p><strong>Carbohydrates:</strong> {{ selected_recipe.CarbohydrateContent }}</p>
     </div>
     <h2>Recommended Recipes</h2>
-    <div>
+    <div class="recipes-list">
       {% for recipe in recommendations %}
       <div class="recipe">
-        <img src="{{ recipe.ImageURL }}" alt="{{ recipe.Name }}">
+        <!-- Handle missing image URL -->
+        <img src="{{ recipe.Images if recipe.Images else '/path/to/default/image.jpg' }}" alt="{{ recipe.Name }}">
         <h3>{{ recipe.Name }}</h3>
-        <p><strong>Name:</strong> {{ recipe['Name'] }}</p>
-            <p><strong>Cook Time:</strong> {{ recipe['CookTime'] }}</p>
-            
-            <!-- Display image only if the image URL is available -->
-            <p><strong>Images:</strong> <img src="{{ recipe['Images'] }}" alt="Recipe Image" style="max-width:200px;"></li>
-            <p><strong>Category:</strong> {{ recipe['RecipeCategory'] }}</p>
-            <p><strong>Ingredients:</strong> {{ recipe['RecipeIngredientParts'] }}</p>
-            <p><strong>Quantities:</strong> {{ recipe['RecipeIngredientQuantities'] }}</p>
-            <p><strong>Ratings:</strong> {{ recipe['AggregatedRating'] }}</p>
-            <p><strong>Servings:</strong> {{ recipe['RecipeServings'] }}</p>
-            <p><strong>Instructions:</strong> {{ recipe['RecipeInstructions'] }}</p>
+        <p><strong>Cook Time:</strong> {{ recipe['CookTime'] }}</p>
+        <p><strong>Category:</strong> {{ recipe['RecipeCategory'] }}</p>
+        
+        <p><strong>Ingredients:</strong> 
+          {% if recipe['RecipeIngredientParts'] %}
+            <ul>
+              {% for ingredient in recipe['RecipeIngredientParts'].split(',') %}
+                <li>{{ ingredient.strip() }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            No ingredients available.
+          {% endif %}
+        </p>
+
+        <p><strong>Quantities:</strong> {{ recipe['RecipeIngredientQuantities'] }}</p>
+        <p><strong>Ratings:</strong> {{ recipe['AggregatedRating'] }}</p>
+        <p><strong>Servings:</strong> {{ recipe['RecipeServings'] }}</p>
+        <p><strong>Instructions:</strong> {{ recipe['RecipeInstructions'] }}</p>
         <p><strong>Calories:</strong> {{ recipe.Calories }}</p>
         <p><strong>Protein:</strong> {{ recipe.ProteinContent }}</p>
         <p><strong>Fat:</strong> {{ recipe.FatContent }}</p>
         <p><strong>Carbohydrates:</strong> {{ recipe.CarbohydrateContent }}</p>
       </div>
-      <hr>
       {% endfor %}
     </div>
     <a class="back-btn" href="{{ url_for('home') }}">Back to Recipes</a>

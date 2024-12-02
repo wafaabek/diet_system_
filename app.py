@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler
 
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Required for session management
+app.secret_key = 'malek key'  # Required for session management
 
 more_details_button = False
 
@@ -17,27 +17,18 @@ vectorizer = joblib.load('supervise_vectorizer_.pkl')
 
 # Load the pre-trained KNN model  for unsupervised
 knn_similar =joblib.load('knn_unsupervised_model_.pkl')
-
+  
 preprocessor_similar =joblib.load('unsupervised_preprossesor_.pkl')
 
 # Load the dataset
 data = pd.read_csv('cleaned_recipes_.csv')
 
-recipes_limited = data.head(6)  # Show only the first 6 recipes
-
-# Nutritional columns to be used for recommendations
-nutritional_features = [
-    "Calories", "ProteinContent", "FatContent", "CarbohydrateContent"
-]
-
-# Scale nutritional features
-scaler = StandardScaler()
-scaled_features = scaler.fit_transform(data[nutritional_features])
+recipes_limited = data.sample(n=6)
 
 def fetch_image(recipe_name , ingredients):
-    url = "Your-URL"
-    API_KEY = "YOUR-API-KEY"
-    SEARCH_ENGINE_ID = "ID-SEARCH-ENGINE"
+    url = "https://cse.google.com/cse.js?cx=b604b290643ae4f55"
+    API_KEY = "AIzaSyCcPP5R23o7DdTVxCdLvBIwXKqm_ullXG4"
+    SEARCH_ENGINE_ID = "b604b290643ae4f55"
 
     search_query = f"{recipe_name} {ingredients}"
 
@@ -86,19 +77,35 @@ def home():
 
 
 
-
-
 @app.route("/recommend/<int:recipe_id>")
 def recommend(recipe_id):
     """
     Recommend similar recipes based on the selected recipe ID.
     """
-    
     # Find the index of the selected recipe in the dataset
-    selected_index = data.index[data["RecipeId"] == recipe_id].tolist()[0]
-    similar_recipes = find_similar_recipes(recipe_id, data, knn_similar, preprocessor_similar, n_neighbors=10)
+    selected_indexes = data.index[data["RecipeId"] == recipe_id].tolist()
 
-    return render_template("recommendations.html", selected_recipe=data.iloc[selected_index], recommendations=similar_recipes)
+    if not selected_indexes:
+        return "Recipe not found", 404  # Handle the case when no recipe matches the given ID
+
+    selected_index = selected_indexes[0]
+
+    # Find the row for the selected recipe
+    recipe_row = data.iloc[selected_index]
+    recipe_row['Images'] = fetch_image(recipe_row['Name'],recipe_row['RecipeIngredientParts'])
+    # Find similar recipes using the k-NN model
+    distances, indices = knn_similar.kneighbors(preprocessor_similar.transform(data.iloc[[selected_index]]), n_neighbors=10)
+
+    # Get the recommended recipes
+    similar_recipes = data.iloc[indices[0]].to_dict("records")
+    # Fetch images for each of the recommended recipes
+    for recipe in similar_recipes:
+        # Fetch the image URL for each recommended recipe
+        recipe_name = recipe['Name']
+        ingredients = recipe['RecipeIngredientParts']  # Join ingredients if it's a list
+        recipe['Images'] = fetch_image(recipe_name, ingredients)  # Add image URL to the recipe dict
+    return render_template("recommendations.html", selected_recipe=recipe_row, recommendations=similar_recipes)
+
 
 ################################################################################################
 
@@ -175,22 +182,13 @@ def get_recipe(prediction):
         'index.html',
         prediction_text=f'The recipe is: {prediction}',
         recipe_details=recipe_details,
-        extended_details=extended_details
+        extended_details=extended_details,
+        recipes=recipes_limited.to_dict("records")
     )
 
 def find_similar_recipes(recipe_id, data, knn_model, preprocessor, n_neighbors=10):
     """
     Find similar recipes to a given recipe.
-
-    Args:
-        recipe_id (int): Index of the recipe to find similar recipes for.
-        data (DataFrame): Original dataset.
-        knn_model (NearestNeighbors): Trained KNN model.
-        preprocessor (ColumnTransformer): Preprocessing pipeline.
-        n_neighbors (int): Number of similar recipes to return.
-
-    Returns:
-        DataFrame: Similar recipes with their distances.
     """
     # Preprocess the recipe features
     recipe_features = preprocessor.transform(data.iloc[[recipe_id]])

@@ -71,6 +71,17 @@
       <div class="recipe">
         <img src="{{ recipe.ImageURL }}" alt="{{ recipe.Name }}">
         <h3>{{ recipe.Name }}</h3>
+        <p><strong>Name:</strong> {{ recipe['Name'] }}</p>
+            <p><strong>Cook Time:</strong> {{ recipe['CookTime'] }}</p>
+            
+            <!-- Display image only if the image URL is available -->
+            <p><strong>Images:</strong> <img src="{{ recipe['Images'] }}" alt="Recipe Image" style="max-width:200px;"></li>
+            <p><strong>Category:</strong> {{ recipe['RecipeCategory'] }}</p>
+            <p><strong>Ingredients:</strong> {{ recipe['RecipeIngredientParts'] }}</p>
+            <p><strong>Quantities:</strong> {{ recipe['RecipeIngredientQuantities'] }}</p>
+            <p><strong>Ratings:</strong> {{ recipe['AggregatedRating'] }}</p>
+            <p><strong>Servings:</strong> {{ recipe['RecipeServings'] }}</p>
+            <p><strong>Instructions:</strong> {{ recipe['RecipeInstructions'] }}</p>
         <p><strong>Calories:</strong> {{ recipe.Calories }}</p>
         <p><strong>Protein:</strong> {{ recipe.ProteinContent }}</p>
         <p><strong>Fat:</strong> {{ recipe.FatContent }}</p>

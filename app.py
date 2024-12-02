@@ -18,6 +18,8 @@ vectorizer = joblib.load('supervise_vectorizer_.pkl')
 # Load the pre-trained KNN model  for unsupervised
 knn_similar =joblib.load('knn_unsupervised_model_.pkl')
 
+preprocessor_similar =joblib.load('unsupervised_preprossesor_.pkl')
+
 # Load the dataset
 data = pd.read_csv('cleaned_recipes_.csv')
 
@@ -91,14 +93,10 @@ def recommend(recipe_id):
     """
     Recommend similar recipes based on the selected recipe ID.
     """
+    
     # Find the index of the selected recipe in the dataset
     selected_index = data.index[data["RecipeId"] == recipe_id].tolist()[0]
-
-    # Find similar recipes using the k-NN model
-    distances, indices = knn.kneighbors([scaled_features[selected_index]], n_neighbors=5)
-
-    # Get the recommended recipes
-    similar_recipes = data.iloc[indices[0]].to_dict("records")
+    similar_recipes = find_similar_recipes(recipe_id, data, knn_similar, preprocessor_similar, n_neighbors=10)
 
     return render_template("recommendations.html", selected_recipe=data.iloc[selected_index], recommendations=similar_recipes)
 
@@ -179,6 +177,32 @@ def get_recipe(prediction):
         recipe_details=recipe_details,
         extended_details=extended_details
     )
+
+def find_similar_recipes(recipe_id, data, knn_model, preprocessor, n_neighbors=10):
+    """
+    Find similar recipes to a given recipe.
+
+    Args:
+        recipe_id (int): Index of the recipe to find similar recipes for.
+        data (DataFrame): Original dataset.
+        knn_model (NearestNeighbors): Trained KNN model.
+        preprocessor (ColumnTransformer): Preprocessing pipeline.
+        n_neighbors (int): Number of similar recipes to return.
+
+    Returns:
+        DataFrame: Similar recipes with their distances.
+    """
+    # Preprocess the recipe features
+    recipe_features = preprocessor.transform(data.iloc[[recipe_id]])
+    
+    # Find nearest neighbors
+    distances, indices = knn_model.kneighbors(recipe_features, n_neighbors=n_neighbors)
+    
+    # Retrieve similar recipes
+    similar_recipes = data.iloc[indices[0]].copy()
+    similar_recipes['Distance'] = distances[0]
+    
+    return similar_recipes
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -3,6 +3,11 @@ import joblib
 import pandas as pd
 import requests
 from sklearn.preprocessing import StandardScaler
+import os
+from sklearn.cluster import KMeans
+from sklearn.neighbors import NearestNeighbors
+
+import numpy as np
 
 
 app = Flask(__name__)
@@ -11,14 +16,28 @@ app.secret_key = 'malek key'  # Required for session management
 more_details_button = False
 
 # Load the pre-trained KNN model for supervised
-knn = joblib.load('knn_supervised_model_.pkl')
+#knn = joblib.load('knn_supervised_model_.pkl')
 # Load the vectorizer
-vectorizer = joblib.load('supervise_vectorizer_.pkl')
+#vectorizer = joblib.load('supervise_vectorizer_.pkl')
 
 # Load the pre-trained KNN model  for unsupervised
-knn_similar =joblib.load('knn_unsupervised_model_.pkl')
+#knn_similar =joblib.load('knn_unsupervised_model_.pkl')
   
-preprocessor_similar =joblib.load('unsupervised_preprossesor_.pkl')
+#preprocessor_similar =joblib.load('unsupervised_preprossesor_.pkl')
+
+# Charger les modèles dans Flask
+
+
+# Function to load KMeans model and KNN model
+def load_models():
+   
+    kmeans = joblib.load(r'model\kmeans_model.joblib')
+    knn_diet = joblib.load(r'model\knn_diet.joblib')
+    
+    return kmeans, knn_diet
+
+
+
 
 # Load the dataset
 data = pd.read_csv('cleaned_recipes_.csv')
@@ -76,7 +95,6 @@ def home():
 
 
 
-
 @app.route("/recommend/<int:recipe_id>")
 def recommend(recipe_id):
     """
@@ -108,21 +126,186 @@ def recommend(recipe_id):
 
 
 ################################################################################################
+# Fonction pour gérer les valeurs aberrantes
+# Classifier les recettes par type de repas (Petit-déjeuner, Déjeuner, Dîner)
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    ingredients = request.form['ingredients']
-    user_vector = vectorizer.transform([ingredients])
-    prediction = knn.predict(user_vector)[0]
 
-    # Get the most similar recipe indices
-    _, indices = knn.kneighbors(user_vector)
+# Charger les données de recettes
+
+# Lecture du fichier CSV contenant les recettes
+recipes = pd.read_csv('cleaned_recipes_.csv')
+
+# Fonction pour détecter et gérer les outliers
+
+
+# Gestion des outliers
+# Gérer les colonnes numériques
+def validate_numeric_columns(recipes, features):
+    for feature in features:
+        recipes[feature] = pd.to_numeric(recipes[feature], errors='coerce')
+    recipes = recipes.dropna(subset=features)
+    return recipes
+
+# Gérer les outliers
+recipes = pd.read_csv('cleaned_recipes_.csv')
+
+# **Validation et gestion des données**
+def validate_numeric_columns(recipes, features):
+    for feature in features:
+        recipes[feature] = pd.to_numeric(recipes[feature], errors='coerce')
+    recipes = recipes.dropna(subset=features)
+    return recipes
+
+def handle_outliers(recipes, features):
+    z_scores = (recipes[features] - recipes[features].mean()) / recipes[features].std()
+    outliers = (z_scores.abs() > 3).any(axis=1)
+    return recipes[~outliers]
+
+# **Classification des recettes par type de repas**
+def classify_recipes(recipes):
+    breakfast_keywords = [
+        'Breakfast', 'Scones', 'Smoothies', 'Oatmeal', 'Breads', 'Frozen Desserts',
+        'Breakfast Eggs', 'Pancakes', 'Croissants', 'Cereals', 'Yogurt', 'Coffee',
+        'Juices', 'Tarts', 'Muffins', 'Fruit', 'Toast', 'Bagels'
+    ]
+    lunch_dinner_keywords = [
+        'Lunch/Snacks', 'Dinner', 'Sandwich', 'Salad', 'Soup', 'Stew', 'Chicken',
+        'Wrap', 'Pasta', 'Roast', 'Fish', 'Rice', 'Vegetable', 'Beans', 'Meat'
+    ]
+
+    def classify_category(category):
+        if isinstance(category, str):
+            if any(keyword in category for keyword in breakfast_keywords):
+                return 'Breakfast'
+            elif any(keyword in category for keyword in lunch_dinner_keywords):
+                return 'Lunch_Dinner'
+        return 'Other'
+
+    recipes['MealType'] = recipes['RecipeCategory'].apply(classify_category)
+    return recipes
+
+# **Clustering des recettes**
+def cluster_recipes(recipes, n_clusters=3):
+    features = ['Calories', 'FatContent', 'ProteinContent', 'CarbohydrateContent']
+    scaler = StandardScaler()
+    scaled_data = scaler.fit_transform(recipes[features])
+
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+    recipes['Cluster'] = kmeans.fit_predict(scaled_data)
+    return recipes, kmeans, scaler
+
+# **Filtrer les recettes par calories**
+def filter_by_calories(recipes, target_calories, tolerance=150):
+    return recipes[(recipes['Calories'] >= target_calories - tolerance) & 
+                   (recipes['Calories'] <= target_calories + tolerance)]
+
+# **Recommander des recettes**
+def recommend_recipes(query, kmeans, scaler, recipes, n_neighbors=5):
+    features = ['Calories', 'FatContent', 'ProteinContent', 'CarbohydrateContent']
+    query_scaled = scaler.transform(query)
+    cluster = kmeans.predict(query_scaled)[0]
+    cluster_recipes = recipes[recipes['Cluster'] == cluster]
+    cluster_recipes = filter_by_calories(cluster_recipes, query[0][0], tolerance=50)
+
+    if cluster_recipes.empty:
+        return pd.DataFrame({'Message': ['Aucune recette disponible pour ce cluster.']})
     
-    top_5_indices = [int(index) for index in indices[0][:6]]  # Convert to Python int
-    session['remaining_recipes'] = top_5_indices  # Save indices in session
-    session['prediction'] = prediction  # Save prediction in session for reuse
+    knn = NearestNeighbors(n_neighbors=n_neighbors)
+    knn.fit(cluster_recipes[features])
+    distances, indices = knn.kneighbors(query_scaled)
 
-    return get_recipe(prediction)
+    recommendations = cluster_recipes.iloc[indices[0]].reset_index(drop=True)
+    recommendations['CalorieDifference'] = (recommendations['Calories'] - query[0][0]).abs()
+    return recommendations.sort_values(by='CalorieDifference')[['Name', 'Calories', 'FatContent', 'ProteinContent', 'CarbohydrateContent']].reset_index(drop=True)
+
+# **Calculer les besoins caloriques**
+def calculate_daily_calories(weight, height, age, sex, goal_weight):
+    bmr = 10 * weight + 6.25 * height - 5 * age + (5 if sex == 'male' else -161)
+    daily_calories = bmr + (goal_weight - weight) * 500 / abs(goal_weight - weight if goal_weight != weight else 1)
+    return daily_calories
+
+# **Calculer les macronutriments**
+def calculate_macronutrients(daily_calories):
+    protein = (daily_calories * 0.15) / 4
+    fat = (daily_calories * 0.25) / 9
+    carbs = (daily_calories * 0.60) / 4
+    return protein, fat, carbs
+
+# **Diviser les calories par repas**
+def distribute_calories(daily_calories):
+    return daily_calories * 0.25, daily_calories * 0.40, daily_calories * 0.35
+
+# **Route principale**
+@app.route('/diet', methods=['GET', 'POST'])
+def indexo():
+    # Validation et prétraitement
+    features = ['Calories', 'FatContent', 'ProteinContent', 'CarbohydrateContent']
+    global recipes
+    recipes = validate_numeric_columns(recipes, features)
+    recipes = handle_outliers(recipes, features)
+    recipes = classify_recipes(recipes)
+    recipes, kmeans, scaler = cluster_recipes(recipes)
+
+    if request.method == 'POST':
+        # Récupérer les informations utilisateur
+        weight = float(request.form['weight'])
+        height = float(request.form['height'])
+        age = int(request.form['age'])
+        sex = request.form['sex']
+        goal_weight = float(request.form['goal_weight'])
+
+        # Calcul des besoins caloriques et macronutriments
+        # Calculer les besoins caloriques et macronutriments
+        daily_calories = calculate_daily_calories(weight, height, age, sex, goal_weight)
+        protein_grams, fat_grams, carb_grams = calculate_macronutrients(daily_calories)
+
+# Répartition des besoins par repas
+        breakfast_calories, lunch_calories, dinner_calories = distribute_calories(daily_calories)
+        breakfast_macros = calculate_macronutrients(breakfast_calories)
+        lunch_macros = calculate_macronutrients(lunch_calories)
+        dinner_macros = calculate_macronutrients(dinner_calories)
+
+# Recommandations pour chaque repas
+        breakfast_recipes = recommend_recipes(
+        np.array([[breakfast_calories, breakfast_macros[1], breakfast_macros[0], breakfast_macros[2]]]), 
+        kmeans, scaler, recipes[recipes['MealType'] == 'Breakfast']
+)
+        lunch_recipes = recommend_recipes(
+        np.array([[lunch_calories, lunch_macros[1], lunch_macros[0], lunch_macros[2]]]), 
+        kmeans, scaler, recipes[recipes['MealType'] == 'Lunch_Dinner']
+)
+        dinner_recipes = recommend_recipes(
+        np.array([[dinner_calories, dinner_macros[1], dinner_macros[0], dinner_macros[2]]]), 
+        kmeans, scaler, recipes[recipes['MealType'] == 'Lunch_Dinner']
+)
+
+        # Rendu de la page
+        return render_template(
+    'diet.html',
+    daily_calories=round(daily_calories, 2),
+    protein_grams=round(protein_grams, 2),
+    fat_grams=round(fat_grams, 2),
+    carb_grams=round(carb_grams, 2),
+    formatted_macronutrients=f"""
+        Besoins journaliers en macronutriments :
+        - Protéines : {round(protein_grams, 2)} g
+        - Graisses : {round(fat_grams, 2)} g
+        - Glucides : {round(carb_grams, 2)} g
+    """,
+    breakfast_macros=breakfast_macros,
+    lunch_macros=lunch_macros,
+    dinner_macros=dinner_macros,
+    breakfast_calories=breakfast_calories,
+    lunch_calories=lunch_calories,
+    dinner_calories=dinner_calories,
+    breakfast=breakfast_recipes.to_dict(orient='records'),
+    lunch=lunch_recipes.to_dict(orient='records'),
+    dinner=dinner_recipes.to_dict(orient='records')
+)
+
+    return render_template('diet.html')
+
+
 
 
 
@@ -133,6 +316,11 @@ def predict():
 def next_recipe():
     prediction = session.get('prediction', 'Unknown')  # Retrieve stored prediction
     return get_recipe(prediction)
+
+
+##################################
+
+
 
 
 def get_recipe(prediction):
